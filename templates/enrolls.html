@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Ro'yxatdan o'tishlar - Raqamli O'quv Markaz{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="section-kicker"><i class="fas fa-clipboard-check"></i> Jarayon monitoringi</span>
+                <h1 class="mt-2">Ro'yxatdan o'tishlar</h1>
+                <p class="section-subtitle mb-0 mt-3">Bu bo'limda shaxsiy ma'lumotlar ko'rsatilmaydi. Faqat kurslar kesimida nechta talaba yozilgani ko'rsatiladi.</p>
+            </div>
+            {% if request.user.is_staff %}
+            <a href="/admin/kurslar/enroll/add/" class="btn btn-info btn-lg">
+                <i class="fas fa-plus me-2"></i>Yangi ro'yxat
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="container page-section">
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="data-pill"><i class="fas fa-users"></i>Jami talabalar soni: <strong>{{ total_unique_students }}</strong></div>
+            <div class="text-muted small">Ro'yxatlar kurslar bo'yicha guruhlangan ko'rinishda berilgan.</div>
+        </div>
+    </div>
+    <div class="row g-4">
+        {% for item in enroll_summary %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">{{ item.kurs__nom }}</h5>
+                            <p class="text-muted mb-0">Kurs bo'yicha umumiy ko'rsatkich</p>
+                        </div>
+                        <span class="badge bg-primary">{{ item.total_students }} talaba</span>
+                    </div>
+                    <p class="card-text mb-2"><i class="fas fa-user-check text-muted me-2"></i>Faol talabalar: {{ item.active_students }}</p>
+                    <p class="card-text mb-3"><i class="fas fa-clipboard-list text-muted me-2"></i>Jami ro'yxatdan o'tishlar: {{ item.total_enrollments }}</p>
+                    <div class="data-pill"><i class="fas fa-book-open"></i>Faqat kurs nomi va soni ko'rsatiladi</div>
+                </div>
+                {% if request.user.is_staff %}
+                <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
+                    <a href="/admin/kurslar/enroll/" class="btn btn-outline-info w-100">
+                        <i class="fas fa-screwdriver-wrench me-2"></i>Admin orqali boshqarish
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card text-center p-5">
+                <div class="feature-icon mx-auto"><i class="fas fa-clipboard-list"></i></div>
+                <h4>Hozircha ro'yxatdan o'tishlar yo'q</h4>
+                <p class="text-muted">
+                    {% if request.user.is_staff %}
+                    Admin paneldan yangi ro'yxatdan o'tishlar qo'shing.
+                    {% else %}
+                    Hozircha ko'rsatish uchun ro'yxatdan o'tishlar mavjud emas.
+                    {% endif %}
+                </p>
+                {% if request.user.is_staff %}
+                <div><a href="/admin/" class="btn btn-info">Admin panelga o'tish</a></div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
