@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
+
 from decouple import Csv, config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -88,16 +90,37 @@ WSGI_APPLICATION = 'raqamli_markaz.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
-        'NAME': config('DB_NAME', default='raqamli_markaz_db'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default=''),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+DATABASE_URL = config('DATABASE_URL', default='')
+
+if DATABASE_URL:
+    database_url = urlparse(DATABASE_URL)
+    database_options = {}
+    query_params = parse_qs(database_url.query)
+    if query_params.get('sslmode'):
+        database_options['sslmode'] = query_params['sslmode'][0]
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': unquote(database_url.path.lstrip('/')),
+            'USER': unquote(database_url.username or ''),
+            'PASSWORD': unquote(database_url.password or ''),
+            'HOST': database_url.hostname or '',
+            'PORT': str(database_url.port or 5432),
+            'OPTIONS': database_options,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
+            'NAME': config('DB_NAME', default='raqamli_markaz_db'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
 
 
 # Password validation
