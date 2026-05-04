@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/wsgi.py"
+      "destination": "/raqamli_markaz/wsgi.py"
     }
   ]
 }
