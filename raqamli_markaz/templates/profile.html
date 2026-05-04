@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Profil - Raqamli O'quv Markaz{% endblock %}
+
+{% block content %}
+    <div class="container page-section">
+        <div class="row gy-4">
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="avatar rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-4" style="width: 100px; height: 100px; font-size: 2rem;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h5 class="card-title">{{ talaba.ism }} {{ talaba.familiya }}</h5>
+                        <p class="text-muted">{{ talaba.email }}</p>
+                        <div class="mt-4 text-start">
+                            <p class="mb-2"><i class="fas fa-phone me-2 text-primary"></i>{{ talaba.telefon }}</p>
+                            <p class="mb-0"><i class="fas fa-calendar me-2 text-primary"></i>{{ talaba.tugilgan_sana }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="card-title mb-1">Mening kurslarim</h5>
+                                <p class="text-muted mb-0">Siz qatnashgan kurslar ro'yxati.</p>
+                            </div>
+                            <a href="{% url 'kurslar' %}" class="btn btn-outline-primary btn-sm">Barcha kurslar</a>
+                        </div>
+                        {% if enrolls %}
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Kurs nomi</th>
+                                            <th>Boshlangan</th>
+                                            <th>Muddati</th>
+                                            <th>Holat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for enroll in enrolls %}
+                                            <tr>
+                                                <td>{{ enroll.kurs.nom }}</td>
+                                                <td>{{ enroll.kurs.boshlangan_sana }}</td>
+                                                <td>{{ enroll.kurs.muddat }} kun</td>
+                                                <td>
+                                                    {% if enroll.holat == 'faol' %}
+                                                        <span class="badge bg-success">Faol</span>
+                                                    {% elif enroll.holat == 'tugagan' %}
+                                                        <span class="badge bg-secondary">Tugagan</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Bekor qilingan</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3"></i><br>
+                                Siz hali birorta kursga ro'yxatdan o'tmagansiz
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

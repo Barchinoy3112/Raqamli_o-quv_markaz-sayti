@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Ro'yxatdan o'tish - Raqamli O'quv Markaz{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+    <div class="auth-visual">
+        <div class="auth-visual-content">
+            <span class="hero-kicker"><i class="fas fa-user-plus"></i> Talaba profili</span>
+            <h1>Ro'yxatdan o'tish</h1>
+            <p>Shaxsiy kabinetingiz orqali o'zingiz qatnashayotgan kurslar, ro'yxat holati va asosiy ma'lumotlaringizni kuzatishingiz mumkin.</p>
+        </div>
+    </div>
+    <div class="auth-form-wrap">
+        <div class="auth-card">
+            <div class="mb-4">
+                <span class="section-kicker"><i class="fas fa-id-card"></i> Yangi hisob</span>
+                <h2 class="fw-bold mt-2 mb-2">Ma'lumotlarni kiriting</h2>
+                <p class="text-muted mb-0">Xatolik bo'lsa, tegishli maydon ostida aniq ko'rsatib beriladi.</p>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="ism">Ism</label>
+                        <input id="ism" type="text" name="ism" class="form-control {% if errors.ism %}is-invalid{% endif %}" value="{{ form_data.ism }}" autocomplete="given-name" minlength="2" maxlength="100" required>
+                        {% if errors.ism %}<span class="field-error">{{ errors.ism }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="familiya">Familiya</label>
+                        <input id="familiya" type="text" name="familiya" class="form-control {% if errors.familiya %}is-invalid{% endif %}" value="{{ form_data.familiya }}" autocomplete="family-name" minlength="2" maxlength="100" required>
+                        {% if errors.familiya %}<span class="field-error">{{ errors.familiya }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="email">Email</label>
+                        <input id="email" type="email" name="email" class="form-control {% if errors.email %}is-invalid{% endif %}" value="{{ form_data.email }}" autocomplete="email" placeholder="name@example.com" maxlength="254" required>
+                        {% if errors.email %}<span class="field-error">{{ errors.email }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="telefon">Telefon</label>
+                        <input id="telefon" type="text" name="telefon" class="form-control {% if errors.telefon %}is-invalid{% endif %}" value="{{ form_data.telefon }}" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" placeholder="901234567" maxlength="12" required>
+                        <small class="text-muted d-block mt-1">Faqat raqam kiriting. Masalan: 901234567 yoki 998901234567</small>
+                        {% if errors.telefon %}<span class="field-error">{{ errors.telefon }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="tugilgan_sana">Tug'ilgan sana</label>
+                        <input id="tugilgan_sana" type="date" name="tugilgan_sana" class="form-control {% if errors.tugilgan_sana %}is-invalid{% endif %}" value="{{ form_data.tugilgan_sana }}" required>
+                        {% if errors.tugilgan_sana %}<span class="field-error">{{ errors.tugilgan_sana }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="password">Parol</label>
+                        <input id="password" type="password" name="password" class="form-control {% if errors.password %}is-invalid{% endif %}" autocomplete="new-password" minlength="6" required>
+                        {% if errors.password %}<span class="field-error">{{ errors.password }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="password2">Parolni tasdiqlang</label>
+                        <input id="password2" type="password" name="password2" class="form-control {% if errors.password2 %}is-invalid{% endif %}" autocomplete="new-password" minlength="6" required>
+                        {% if errors.password2 %}<span class="field-error">{{ errors.password2 }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-user-check me-2"></i>Ro'yxatdan o'tish
+                    </button>
+                </div>
+            </form>
+
+            <p class="text-center text-muted mt-4 mb-0">
+                Hisobingiz bormi? <a href="{% url 'login' %}">Kirish</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const phoneInput = document.getElementById('telefon');
+
+    if (phoneInput) {
+        phoneInput.addEventListener('input', () => {
+            phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 12);
+        });
+    }
+</script>
+{% endblock %}
