@@ -3,8 +3,9 @@ from datetime import date
 from xml.sax.saxutils import escape
 
 from django.contrib import messages
-from django.contrib.auth import logout as auth_logout
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import Count, Q
@@ -83,14 +84,15 @@ def kurslar(request):
             (url for key, url in image_map.items() if key in lower_name),
             fallback_images[idx % len(fallback_images)],
         )
+    
     enrolled_course_ids = set()
-    talaba_id = request.session.get('talaba_id')
-    if talaba_id:
+    if request.user.is_authenticated:
         enrolled_course_ids = set(
-            Enroll.objects.filter(talaba_id=talaba_id)
+            Enroll.objects.filter(talaba=request.user)
             .exclude(holat='bekor_qilingan')
             .values_list('kurs_id', flat=True)
         )
+    
     return render(request, 'kurslar.html', {
         'kurslar': kurslar_list,
         'enrolled_course_ids': enrolled_course_ids,
@@ -104,14 +106,14 @@ def talabalar(request):
     return render(request, 'talabalar.html', {'talabalar': talabalar_list})
 
 def enrolls(request):
+    if not request.user.is_authenticated:
+        messages.info(request, "Ro'yxatlarni ko'rish uchun avval tizimga kiring.")
+        return redirect('login')
+    
     if request.user.is_staff:
         enrolls_qs = Enroll.objects.select_related('talaba', 'kurs')
     else:
-        talaba_id = request.session.get('talaba_id')
-        if not talaba_id:
-            messages.info(request, "Ro'yxatlarni ko'rish uchun avval tizimga kiring.")
-            return redirect('login')
-        enrolls_qs = Enroll.objects.filter(talaba_id=talaba_id).select_related('talaba', 'kurs')
+        enrolls_qs = Enroll.objects.filter(talaba=request.user).select_related('talaba', 'kurs')
 
     enroll_summary = (
         enrolls_qs.values('kurs_id', 'kurs__nom')
@@ -131,19 +133,12 @@ def enrolls(request):
 
 @require_POST
 def kursga_yozilish(request, kurs_id):
-    talaba_id = request.session.get('talaba_id')
-    if not talaba_id:
+    if not request.user.is_authenticated:
         messages.info(request, 'Kursga yozilish uchun avval tizimga kiring.')
         return redirect('login')
 
-    talaba = Talaba.objects.filter(id=talaba_id).first()
-    if not talaba:
-        request.session.pop('talaba_id', None)
-        messages.error(request, 'Profil topilmadi. Qaytadan tizimga kiring.')
-        return redirect('login')
-
     kurs = get_object_or_404(Kurs, id=kurs_id)
-    enroll = Enroll.objects.filter(talaba=talaba, kurs=kurs).first()
+    enroll = Enroll.objects.filter(talaba=request.user, kurs=kurs).first()
 
     if enroll:
         if enroll.holat == 'bekor_qilingan':
@@ -153,7 +148,12 @@ def kursga_yozilish(request, kurs_id):
         else:
             messages.info(request, f'Siz {kurs.nom} kursiga allaqachon yozilgansiz.')
     else:
-        Enroll.objects.create(talaba=talaba, kurs=kurs, holat='faol')
+        # Check capacity before creating enrollment
+        if kurs.is_full:
+            messages.error(request, f'{kurs.nom} kursi to\'liq. Yozib bo\'lmaydi.')
+            return redirect('kurslar')
+
+        Enroll.objects.create(talaba=request.user, kurs=kurs, holat='faol')
         messages.success(request, f'{kurs.nom} kursiga muvaffaqiyatli yozildingiz.')
 
     return redirect('profile')
@@ -168,23 +168,24 @@ def register(request):
             auth_logout(request)
 
         form_data = {
-            'ism': request.POST.get('ism', '').strip(),
-            'familiya': request.POST.get('familiya', '').strip(),
+            'first_name': request.POST.get('first_name', '').strip(),
+            'last_name': request.POST.get('last_name', '').strip(),
             'email': request.POST.get('email', '').strip().lower(),
             'telefon': request.POST.get('telefon', '').strip(),
             'tugilgan_sana': request.POST.get('tugilgan_sana', '').strip(),
         }
+        username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
         password2 = request.POST.get('password2', '')
         birth_date = parse_date(form_data['tugilgan_sana']) if form_data['tugilgan_sana'] else None
         normalized_phone, phone_error = normalize_uz_phone(form_data['telefon'])
 
-        ism_error = validate_person_name(form_data['ism'], 'Ismingizni')
-        familiya_error = validate_person_name(form_data['familiya'], 'Familiyangizni')
-        if ism_error:
-            errors['ism'] = ism_error
-        if familiya_error:
-            errors['familiya'] = familiya_error
+        first_name_error = validate_person_name(form_data['first_name'], 'Ismingizni')
+        last_name_error = validate_person_name(form_data['last_name'], 'Familiyangizni')
+        if first_name_error:
+            errors['first_name'] = first_name_error
+        if last_name_error:
+            errors['last_name'] = last_name_error
         if not form_data['email']:
             errors['email'] = 'Email manzilini kiriting.'
         elif len(form_data['email']) > 254:
@@ -196,6 +197,12 @@ def register(request):
                 errors['email'] = 'Email manzili noto\'g\'ri formatda.'
         if form_data['email'] and Talaba.objects.filter(email=form_data['email']).exists():
             errors['email'] = 'Bu email bilan talaba allaqachon ro\'yxatdan o\'tgan.'
+        if not username:
+            errors['username'] = 'Foydalanuvchi nomini kiriting.'
+        elif len(username) < 3:
+            errors['username'] = 'Foydalanuvchi nomi kamida 3 ta belgidan iborat bo\'lsin.'
+        elif Talaba.objects.filter(username=username).exists():
+            errors['username'] = 'Bu foydalanuvchi nomi allaqachon mavjud.'
         if not form_data['telefon']:
             errors['telefon'] = 'Telefon raqamingizni kiriting.'
         elif phone_error:
@@ -212,8 +219,8 @@ def register(request):
                 errors['tugilgan_sana'] = 'Tug\'ilgan sanani qayta tekshiring.'
         if not password:
             errors['password'] = 'Parol kiriting.'
-        elif len(password) < 6:
-            errors['password'] = 'Parol kamida 6 ta belgidan iborat bo\'lsin.'
+        elif len(password) < 8:
+            errors['password'] = 'Parol kamida 8 ta belgidan iborat bo\'lsin.'
         elif password.isdigit():
             errors['password'] = 'Parol faqat raqamlardan iborat bo\'lmasin.'
         if not password2:
@@ -224,15 +231,21 @@ def register(request):
         if errors:
             messages.error(request, 'Iltimos, belgilangan xatoliklarni tuzating.')
         else:
-            talaba = Talaba.objects.create(
-                ism=form_data['ism'],
-                familiya=form_data['familiya'],
+            talaba = Talaba.objects.create_user(
+                username=username,
                 email=form_data['email'],
+                password=password,
+                first_name=form_data['first_name'],
+                last_name=form_data['last_name'],
                 telefon=normalized_phone,
                 tugilgan_sana=birth_date,
-                password=make_password(password),
             )
-            request.session['talaba_id'] = talaba.id
+            # When multiple authentication backends are configured, Django
+            # requires the `backend` attribute to be set on the user object
+            # before calling `login()` if the user wasn't returned by
+            # `authenticate()`. Set it to our email backend.
+            talaba.backend = 'kurslar.backends.EmailBackend'
+            auth_login(request, talaba)
             messages.success(request, 'Ro\'yxatdan o\'tish muvaffaqiyatli yakunlandi.')
             return redirect('profile')
 
@@ -246,13 +259,20 @@ def login(request):
 
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
-        talaba = Talaba.objects.filter(email=email).first()
+        user = authenticate(request, email=email, password=password)
 
-        if talaba and (check_password(password, talaba.password) or talaba.password == password):
-            if talaba.password == password:
-                talaba.password = make_password(password)
-                talaba.save(update_fields=['password'])
-            request.session['talaba_id'] = talaba.id
+        if user is not None:
+            # Ensure backend attribute is set (some auth flows return users
+            # without a backend attribute). Set our email backend as fallback.
+            if not hasattr(user, 'backend') or not user.backend:
+                user.backend = 'kurslar.backends.EmailBackend'
+            auth_login(request, user)
+            # Persist session immediately to avoid cases where subsequent
+            # requests (different host/origin) might not see the login.
+            try:
+                request.session.save()
+            except Exception:
+                pass
             messages.success(request, 'Tizimga muvaffaqiyatli kirdingiz.')
             return redirect('profile')
 
@@ -260,29 +280,13 @@ def login(request):
 
     return render(request, 'login.html')
 
+@login_required(login_url='login')
 def profile(request):
-    talaba_id = request.session.get('talaba_id')
-    if not talaba_id:
-        messages.info(request, 'Profilni ko\'rish uchun tizimga kiring.')
-        return redirect('login')
-
-    if request.user.is_authenticated:
-        auth_logout(request)
-        request.session['talaba_id'] = talaba_id
-
-    talaba = Talaba.objects.filter(id=talaba_id).first()
-    if not talaba:
-        request.session.pop('talaba_id', None)
-        messages.error(request, 'Profil topilmadi. Qaytadan tizimga kiring.')
-        return redirect('login')
-
-    enrolls_list = Enroll.objects.filter(talaba=talaba).select_related('kurs')
-    return render(request, 'profile.html', {'talaba': talaba, 'enrolls': enrolls_list})
+    enrolls_list = Enroll.objects.filter(talaba=request.user).select_related('kurs')
+    return render(request, 'profile.html', {'talaba': request.user, 'enrolls': enrolls_list})
 
 def logout(request):
-    request.session.pop('talaba_id', None)
-    if request.user.is_authenticated:
-        auth_logout(request)
+    auth_logout(request)
     messages.success(request, 'Tizimdan chiqdingiz.')
     return redirect('home')
 

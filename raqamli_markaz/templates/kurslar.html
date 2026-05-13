@@ -41,19 +41,23 @@
                         <i class="fas fa-pen-to-square me-2"></i>Tahrirlash
                     </a>
                 </div>
-                {% elif request.session.talaba_id %}
+                {% elif request.user.is_authenticated %}
                 <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
                     {% if kurs.id in enrolled_course_ids %}
-                    <button type="button" class="btn btn-outline-success w-100" disabled>
-                        <i class="fas fa-check me-2"></i>Yozilgansiz
-                    </button>
-                    {% else %}
-                    <form method="post" action="{% url 'kursga_yozilish' kurs.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-user-check me-2"></i>Kursga yozilish
+                        <button type="button" class="btn btn-outline-success w-100" disabled>
+                            <i class="fas fa-check me-2"></i>Yozilgansiz
                         </button>
-                    </form>
+                    {% elif kurs.is_full %}
+                        <button type="button" class="btn btn-secondary w-100" disabled>
+                            <i class="fas fa-ban me-2"></i>To'ldirilgan
+                        </button>
+                    {% else %}
+                        <form method="post" action="{% url 'kursga_yozilish' kurs.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-user-check me-2"></i>Kursga yozilish
+                            </button>
+                        </form>
                     {% endif %}
                 </div>
                 {% else %}

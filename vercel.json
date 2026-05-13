@@ -1,10 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
+  "buildCommand": "cd raqamli_markaz && python manage.py migrate --noinput && python manage.py collectstatic --noinput",
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/raqamli_markaz/wsgi.py"
+      "source": "\\/(.*)",
+      "destination": "/raqamli_markaz/raqamli_markaz/wsgi.py"
     }
   ]
 }

@@ -21,6 +21,7 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('kurslar.urls')),
+    path('api-auth/', include('rest_framework.urls')),
     path('robots.txt', views.robots_txt, name='robots_txt'),
     path('sitemap.xml', views.sitemap_xml, name='sitemap_xml'),
     path('manifest.webmanifest', views.manifest_webmanifest, name='manifest_webmanifest'),
